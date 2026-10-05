@@ -1,0 +1,61 @@
+[NAME]
+Dialogue and language
+[SEARCH]
+tags=dialogue -*_text -wingdings -pictographics -empty_speech_bubble  
+limit=75
+
+[ADD_TAGS]
+spanish_text
+english_text
+french_text
+----------------------
+[NAME]
+Animation
+[SEARCH]
+tags=type:gif -2d_animation -3d_animation -real -pixel_(artwork) status:active 
+limit=75
+
+[ADD_TAGS]
+2d_animation
+3d_animation
+
+----------------------
+[NAME]
+Cum
+[SEARCH]
+tags=cum penis -cum_drip -cum_in_*-cum_on_* -cumshot -precum  
+limit=75
+
+[ADD_TAGS]
+
+
+----------------------
+[NAME]
+public inside vs outside
+[SEARCH]
+tags=public -inside -outside -inside_vehicle -simple_background -abstract_background 
+limit=75
+
+[ADD_TAGS]
+inside
+outside
+simple_background
+----------------------
+[NAME]
+Lucario
+[SEARCH]
+tags=lucario -hand_spike -chest_spike -spikes
+limit=75
+
+[ADD_TAGS]
+chest_spike
+hand_spike
+----------------------
+[NAME]
+Knots on Canine Penises
+[SEARCH]
+tags=canine_penis -knotted_penis
+limit=75
+
+[ADD_TAGS]
+knotted_penis
