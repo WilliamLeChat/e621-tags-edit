@@ -15,10 +15,10 @@ A small desktop app for reviewing e621 posts and submitting tags.
    This installs `requests` for e621 API requests and `Pillow` for displaying
    images and animated GIFs. Videos use your Windows default player and need no
    extra Python library.
-4. Edit `config.txt` and add your e621 username and API key. **KEEP THIS FILE**
-   **PRIVATE; NEVER SHARE OR PUBLISH YOUR API KEY !!!**
-5. Add at least one project to `tag_project.txt`. The app asks you to choose
-   one when it starts.
+4. Edit `config/config.txt` and add your e621 username and API key. **KEEP THIS
+   FILE PRIVATE; NEVER SHARE OR PUBLISH YOUR API KEY !!!**
+5. Add at least one project to `config/tag_project.txt`. The app asks you to
+   choose one when it starts.
 6. Run the app:
 
    ```bash
@@ -35,7 +35,7 @@ A small desktop app for reviewing e621 posts and submitting tags.
 3. Click **Submit** to add the selected tags to the post and continue. At least
    one tag must be selected.
 4. Click **Skip** to move on without submitting tags. If you configured a set
-   in `config.txt`, the skipped post is added to that set.
+   in `config/config.txt`, the skipped post is added to that set.
 5. Use the page controls to browse other result pages, or **Change Project** to
    choose another project. Click the **↻** button beside **Change Project** to
    reload the current post's image or media if it failed to load.
@@ -63,14 +63,17 @@ A small desktop app for reviewing e621 posts and submitting tags.
 Shortcuts work when focus is not in a text or page-number field. Number keys
 toggle tag checkboxes; shortcuts do not choose a project.
 
-## Text files
+## Configuration files
 
-### `config.txt` — account and current settings
+Configuration files are stored in the `config` folder. Keep your API key in
+`config/config.txt` private; do not share or publish it.
+
+### `config/config.txt` — account and current settings
 
 Fill in your own e621 account details. Keep the section names and `key=value`
 format. You do not need to fill in `[SEARCH]` or `[ADD_TAGS]` yourself: when
 you choose a project at startup, the app copies those settings from
-`tag_project.txt` into `config.txt`.
+`config/tag_project.txt` into `config/config.txt`.
 
 ```ini
 [API]
@@ -88,9 +91,9 @@ existing e621 set. Skipped posts are added to that set and excluded from later
 searches.
 
 The selected project's `[SEARCH]` and `[ADD_TAGS]` settings are copied from
-`tag_project.txt` into `config.txt` automatically at startup.
+`config/tag_project.txt` into `config/config.txt` automatically at startup.
 
-### `tag_project.txt` — selectable projects
+### `config/tag_project.txt` — selectable projects
 
 Add one or more projects. Each project needs a name and can have its own search
 and checkbox tags:
@@ -112,7 +115,7 @@ posts requested on each page. For example, `limit=75` requests up to 75 posts
 per page; use the page controls in the app to browse more results. The project
 name is shown in the startup selection window.
 
-### `default_tag.txt` — tags added to every project's search
+### `config/default_tag.txt` — tags added to every project's search
 
 Put one e621 search tag on each line:
 
@@ -124,7 +127,7 @@ status:active
 These terms are added to the selected project's search, so they apply to every
 project. Lines starting with `#` are ignored.
 
-### `Blacklist.txt` — tags to exclude from searches
+### `config/Blacklist.txt` — tags to exclude from searches
 
 Put one tag on each line:
 
@@ -135,6 +138,13 @@ scatplay
 
 The app excludes these tags from search results. Blank lines and lines starting
 with `#` are ignored.
+
+## Documentation
+
+- [`docs/ERROR.md`](docs/ERROR.md) describes known errors and troubleshooting.
+- [`docs/TODO.md`](docs/TODO.md) tracks project tasks.
+
+## Dependencies
 
 ### `requirements.txt` — Python libraries
 

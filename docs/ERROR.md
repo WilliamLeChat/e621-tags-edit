@@ -7,10 +7,10 @@ It was created from the analysis of the code and the error messages explicitly g
 
 ### 1.1 Missing configuration file
 
-- Cause: the `config.txt` file cannot be found.
-- Message: `Configuration file not found: config.txt`
+- Cause: `config/config.txt` cannot be found.
+- Message: `Configuration file not found: <path to config/config.txt>`
 - Type: `RuntimeError`
-- Solution: create the `config.txt` file in the program folder with the correct format.
+- Solution: create `config/config.txt` with the correct format.
 
 Expected example:
 
@@ -34,8 +34,8 @@ my_set
 
 ### 1.2 Missing credentials
 
-- Cause: `username` or `api_key` is missing from `config.txt`.
-- Message: `Please provide username and api_key in config.txt`
+- Cause: `username` or `api_key` is missing from `config/config.txt`.
+- Message: `Please provide username and api_key in config/config.txt`
 - Type: displayed via `messagebox.showerror`
 - Solution: fill in the `[API]` fields in the configuration file.
 
@@ -48,17 +48,17 @@ my_set
 
 ### 1.4 Missing or empty projects file
 
-- Cause: `tag_project.txt` is missing or contains no valid project.
+- Cause: `config/tag_project.txt` is missing or contains no valid project.
 - Possible messages:
-  - `Projects file not found: tag_project.txt`
-  - `No tag project found in tag_project.txt`
+  - `Projects file not found: <path to config/tag_project.txt>`
+  - `No tag project found in <path to config/tag_project.txt>`
 - Type: `RuntimeError`
-- Solution: create a `tag_project.txt` file containing at least one project.
+- Solution: create `config/tag_project.txt` containing at least one project.
 
 ### 1.5 Missing default tags file
 
-- Cause: `default_tag.txt` is missing.
-- Message: `Default tags file not found: default_tag.txt`
+- Cause: `config/default_tag.txt` is missing.
+- Message: `Default tags file not found: <path to config/default_tag.txt>`
 - Type: `RuntimeError`
 - Solution: create the file, even if it is empty or commented.
 
@@ -210,8 +210,8 @@ my_set
 
 ### 6.1 No projects available
 
-- Cause: `tag_project.txt` contains no usable project.
-- Message: `No tag project found in tag_project.txt`
+- Cause: `config/tag_project.txt` contains no usable project.
+- Message: `No tag project found in <path to config/tag_project.txt>`
 - Type: `RuntimeError`
 - Solution: add a project with a `[NAME]` section followed by `[SEARCH]` and/or `[ADD_TAGS]`.
 
@@ -280,8 +280,8 @@ Most critical cases are caught and displayed to the user via `messagebox.showerr
 
 ## 9. Troubleshooting recommendations
 
-1. Check that `config.txt` exists and has the correct content.
-2. Check `tag_project.txt` and `default_tag.txt`.
+1. Check that `config/config.txt` exists and has the correct content.
+2. Check `config/tag_project.txt` and `config/default_tag.txt`.
 3. Verify network access to `https://e621.net`.
 4. Confirm that the API credentials are valid.
 5. Verify that tags, sets, and blacklist entries are not in an invalid format.

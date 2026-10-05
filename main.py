@@ -14,14 +14,16 @@ from tkinter import messagebox
 
 from PIL import Image, ImageTk
 
-CONFIG_FILE = "config.txt"
-TAG_PROJECT_FILE = "tag_project.txt"
-DEFAULT_TAG_FILE = "default_tag.txt"
+BASE_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+CONFIG_DIRECTORY = os.path.join(BASE_DIRECTORY, "config")
+CONFIG_FILE = os.path.join(CONFIG_DIRECTORY, "config.txt")
+TAG_PROJECT_FILE = os.path.join(CONFIG_DIRECTORY, "tag_project.txt")
+DEFAULT_TAG_FILE = os.path.join(CONFIG_DIRECTORY, "default_tag.txt")
 BASE_URL = "https://e621.net"
-BLACKLIST_FILE = "Blacklist.txt"
+BLACKLIST_FILE = os.path.join(CONFIG_DIRECTORY, "Blacklist.txt")
 TAG_EDIT_QUOTA_REFRESH_INTERVAL = 15
 VIDEO_EXTENSIONS = {".mp4", ".webm"}
-VIDEO_DIRECTORY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "video")
+VIDEO_DIRECTORY = os.path.join(BASE_DIRECTORY, "video")
 
 
 def parse_remaining_tag_edits(page_html):
@@ -372,7 +374,7 @@ class App:
         if not self.cfg.username or not self.cfg.api_key:
             messagebox.showerror(
                 "Error",
-                "Please provide username and api_key in config.txt"
+                "Please provide username and api_key in config/config.txt"
             )
             root.destroy()
             return
