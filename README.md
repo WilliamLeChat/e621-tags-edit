@@ -26,6 +26,30 @@ A small desktop app for reviewing e621 posts and submitting tags.
 
    On Windows, `py main.py` can be used if `python` is not recognized.
 
+## Using the app
+
+1. Choose a project when the app starts. Its search and tag checkboxes are
+   loaded automatically.
+2. Review the post and click the checkboxes for the tags that apply.
+3. Click **Submit** to add the selected tags to the post and continue. At least
+   one tag must be selected.
+4. Click **Skip** to move on without submitting tags. If you configured a set
+   in `config.txt`, the skipped post is added to that set.
+5. Use the page controls to browse other result pages, or **Change Project** to
+   choose another project.
+
+### Keyboard shortcuts
+
+- **1–9**: toggle the first through ninth tag checkbox. **0** toggles the
+  tenth checkbox. The order matches the tags listed in the project's
+  `[ADD_TAGS]` section.
+- **Enter** (including the numeric keypad Enter): submit the selected tags.
+- **Right Arrow**: skip the current post.
+- **Left Arrow**: go back to the previous post on the current page.
+
+Shortcuts work when focus is not in a text or page-number field. These keys
+choose tag checkboxes; they do not choose a project.
+
 ## Text files
 
 ### `config.txt` — account and current settings
