@@ -37,7 +37,8 @@ A small desktop app for reviewing e621 posts and submitting tags.
 4. Click **Skip** to move on without submitting tags. If you configured a set
    in `config.txt`, the skipped post is added to that set.
 5. Use the page controls to browse other result pages, or **Change Project** to
-   choose another project.
+   choose another project. Click the **↻** button beside **Change Project** to
+   reload the current post's image or media if it failed to load.
 6. GIFs play in the app. For an MP4 or WebM post, click the preview to open the
    downloaded video with the default Windows app for that file type. The video
    is saved in the `video` folder beside `main.py`; the app creates this folder
@@ -57,9 +58,10 @@ A small desktop app for reviewing e621 posts and submitting tags.
 - **Enter** (including the numeric keypad Enter): submit the selected tags.
 - **Right Arrow**: skip the current post.
 - **Left Arrow**: go back to the previous post on the current page.
+- **R**: reload the current post's image or media.
 
-Shortcuts work when focus is not in a text or page-number field. These keys
-choose tag checkboxes; they do not choose a project.
+Shortcuts work when focus is not in a text or page-number field. Number keys
+toggle tag checkboxes; shortcuts do not choose a project.
 
 ## Text files
 

@@ -40,7 +40,7 @@ def parse_remaining_tag_edits(page_html):
     )
     if match is None:
         raise RuntimeError(
-            "Impossible de trouver le quota d'éditions de tags dans la page e621."
+            "Could not find the tag edit quota on the e621 page."
         )
     return int(match.group(1))
 
@@ -96,7 +96,7 @@ def load_config():
                 elif section == "[SET]":
                     cfg.set_shortname = line
     except FileNotFoundError:
-        raise RuntimeError(f"Fichier de configuration introuvable: {CONFIG_FILE}")
+        raise RuntimeError(f"Configuration file not found: {CONFIG_FILE}")
 
     return cfg
 
@@ -134,7 +134,7 @@ def load_tag_projects():
                 elif section == "[ADD_TAGS]":
                     current_project["add_tags"].append(value)
     except FileNotFoundError:
-        raise RuntimeError(f"Fichier de projets introuvable: {TAG_PROJECT_FILE}")
+        raise RuntimeError(f"Projects file not found: {TAG_PROJECT_FILE}")
 
     if current_project is not None:
         projects.append(current_project)
@@ -157,9 +157,9 @@ def load_tag_projects():
                 label = search_tags[:40]
                 if len(search_tags) > 40:
                     label += "..."
-                project["name"] = f"Projet {index}: {label}"
+                project["name"] = f"Project {index}: {label}"
             else:
-                project["name"] = f"Projet sans nom {index}"
+                project["name"] = f"Unnamed project {index}"
 
     return projects
 
@@ -173,7 +173,7 @@ def load_default_search_tags():
                 if line.strip() and not line.strip().startswith("#")
             ]
     except FileNotFoundError:
-        raise RuntimeError(f"Fichier de tags par défaut introuvable: {DEFAULT_TAG_FILE}")
+        raise RuntimeError(f"Default tags file not found: {DEFAULT_TAG_FILE}")
 
 
 def add_default_search_tags(project, default_tags):
@@ -253,7 +253,7 @@ def apply_tag_project(project):
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             config_text = f.read()
     except FileNotFoundError:
-        raise RuntimeError(f"Fichier de configuration introuvable: {CONFIG_FILE}")
+        raise RuntimeError(f"Configuration file not found: {CONFIG_FILE}")
 
     updated_config = replace_config_sections(config_text, project)
     with open(CONFIG_FILE, "w", encoding="utf-8", newline="\n") as f:
@@ -263,9 +263,9 @@ def apply_tag_project(project):
 def choose_tag_project(root, projects):
     selection = {"project": None}
     dialog = tk.Toplevel(root)
-    dialog.title("Choisir un tag_projet")
+    dialog.title("Select a tag project")
     dialog.resizable(False, False)
-    tk.Label(dialog, text="Quel tag_projet voulez-vous utiliser ?").pack(
+    tk.Label(dialog, text="Which tag project do you want to use?").pack(
         padx=12, pady=(12, 6)
     )
 
@@ -284,10 +284,10 @@ def choose_tag_project(root, projects):
 
     button_frame = tk.Frame(dialog)
     button_frame.pack(pady=(4, 12))
-    tk.Button(button_frame, text="Choisir", command=confirm_selection).pack(
+    tk.Button(button_frame, text="Select", command=confirm_selection).pack(
         side="left", padx=5
     )
-    tk.Button(button_frame, text="Annuler", command=dialog.destroy).pack(
+    tk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(
         side="left", padx=5
     )
     project_list.bind("<Double-Button-1>", confirm_selection)
@@ -359,11 +359,11 @@ class App:
         try:
             self.cfg = load_config()
         except Exception as e:
-            messagebox.showerror("Erreur", str(e))
+            messagebox.showerror("Error", str(e))
             root.destroy()
             return
 
-        # Charger la blacklist depuis Blacklist.txt
+        # Load the blacklist from Blacklist.txt
         try:
             self.blacklist = load_blacklist()
         except Exception:
@@ -371,8 +371,8 @@ class App:
 
         if not self.cfg.username or not self.cfg.api_key:
             messagebox.showerror(
-                "Erreur",
-                "Veuillez renseigner username et api_key dans config.txt"
+                "Error",
+                "Please provide username and api_key in config.txt"
             )
             root.destroy()
             return
@@ -406,11 +406,11 @@ class App:
 
         root.title("e621 Tag Editor")
 
-        top_frame = tk.Frame(root)
-        top_frame.pack(side="top", fill="x", padx=10, pady=5)
+        self.top_frame = tk.Frame(root)
+        self.top_frame.pack(side="top", fill="x", padx=10, pady=5)
 
         self.theme_btn = tk.Button(
-            top_frame,
+            self.top_frame,
             text="🌙 Dark Mode",
             command=self.toggle_theme,
             width=15
@@ -418,9 +418,9 @@ class App:
         self.theme_btn.pack(side="left")
         self.widgets.append(self.theme_btn)
 
-        # Pagination controls (page navigation)
+        # Pagination controls
         self.page = 1
-        self.page_frame = tk.Frame(top_frame)
+        self.page_frame = tk.Frame(self.top_frame)
         self.page_frame.pack(side="left", padx=10)
 
         self.prev_page_btn = tk.Button(
@@ -433,7 +433,7 @@ class App:
 
         self.page_label = tk.Label(self.page_frame, text=f"Page: {self.page}", width=12)
         self.page_label.pack(side="left")
-        # Entry + Go button to jump to a specific page
+        # Entry + Go button to jump directly to a page
         self.page_entry = tk.Entry(self.page_frame, width=6)
         self.page_entry.insert(0, str(self.page))
         self.page_entry.pack(side="left", padx=(5, 0))
@@ -457,10 +457,18 @@ class App:
 
         self.change_project_btn = tk.Button(
             self.page_frame,
-            text="Changer de projet",
+            text="Change project",
             command=self.change_tag_project
         )
         self.change_project_btn.pack(side="left", padx=(5, 0))
+
+        self.reload_media_btn = tk.Button(
+            self.page_frame,
+            text="↻",
+            width=3,
+            command=self.reload_media
+        )
+        self.reload_media_btn.pack(side="left", padx=(5, 0))
 
         self.widgets.extend([
             self.page_frame,
@@ -469,12 +477,13 @@ class App:
             self.page_entry,
             self.go_page_btn,
             self.next_page_btn,
-            self.change_project_btn
+            self.change_project_btn,
+            self.reload_media_btn
         ])
 
         self.tag_edits_label = tk.Label(
             root,
-            text="Éditions de tags restantes cette heure : chargement..."
+            text="Remaining tag edits this hour: loading..."
         )
         self.tag_edits_label.pack(anchor="w", padx=10)
         self.widgets.append(self.tag_edits_label)
@@ -499,12 +508,12 @@ class App:
         self.widgets.append(self.checkbox_frame)
         self.create_tag_checkboxes()
 
-        button_frame = tk.Frame(root)
-        button_frame.pack(pady=10)
-        self.widgets.append(button_frame)
+        self.button_frame = tk.Frame(root)
+        self.button_frame.pack(pady=10)
+        self.widgets.append(self.button_frame)
 
         self.prev_btn = tk.Button(
-            button_frame,
+            self.button_frame,
             text="Previous",
             width=15,
             command=self.previous
@@ -513,7 +522,7 @@ class App:
         self.widgets.append(self.prev_btn)
 
         self.submit_btn = tk.Button(
-            button_frame,
+            self.button_frame,
             text="Submit",
             width=15,
             command=self.submit
@@ -522,7 +531,7 @@ class App:
         self.widgets.append(self.submit_btn)
 
         self.skip_btn = tk.Button(
-            button_frame,
+            self.button_frame,
             text="Skip",
             width=15,
             command=self.skip
@@ -570,7 +579,7 @@ class App:
     def change_tag_project(self):
         if self.pending_actions:
             self.status_label.config(
-                text="Attendez la fin des actions API avant de changer de projet.",
+                text="Wait for the API actions to finish before changing projects.",
                 fg="orange"
             )
             return
@@ -579,7 +588,7 @@ class App:
             projects = load_tag_projects()
             if not projects:
                 raise RuntimeError(
-                    f"Aucun tag_projet trouvé dans {TAG_PROJECT_FILE}"
+                    f"No tag project found in {TAG_PROJECT_FILE}"
                 )
 
             selected_project = choose_tag_project(self.root, projects)
@@ -600,14 +609,14 @@ class App:
             self.page_entry.insert(0, str(self.page))
             self.index = 0
             self.status_label.config(
-                text=f"Projet « {selected_project['name']} » chargé.",
+                text=f"Project \"{selected_project['name']}\" loaded.",
                 fg="green"
             )
             self.root.state("zoomed")
             self.load_posts()
         except Exception as e:
             messagebox.showerror(
-                "Erreur de changement de projet",
+                "Project change error",
                 str(e),
                 parent=self.root
             )
@@ -619,6 +628,10 @@ class App:
             return
 
         key = event.char
+        if key.lower() == "r":
+            self.reload_media()
+            return "break"
+
         if len(key) != 1 or key not in "0123456789":
             return
 
@@ -657,7 +670,7 @@ class App:
             return
 
         fullscreen_window = tk.Toplevel(self.root)
-        fullscreen_window.title("Image Viewer - Scroll to zoom, Left click drag to move, Right click to close")
+        fullscreen_window.title("Image Viewer - Scroll to zoom, left-click and drag to move, right-click to close")
         
         canvas = tk.Canvas(fullscreen_window, bg="black", cursor="hand2")
         canvas.pack(fill="both", expand=True)
@@ -736,7 +749,10 @@ class App:
             bg=colors["label_bg"],
             fg=colors["label_fg"]
         )
+        self.top_frame.config(bg=colors["bg"])
+        self.page_frame.config(bg=colors["bg"])
         self.checkbox_frame.config(bg=colors["bg"])
+        self.button_frame.config(bg=colors["bg"])
         self.preview_text.config(
             bg=colors["text_bg"],
             fg=colors["text_fg"],
@@ -766,6 +782,12 @@ class App:
             activeforeground=colors["button_fg"]
         )
         self.prev_btn.config(
+            bg=colors["button_bg"],
+            fg=colors["button_fg"],
+            activebackground=colors["label_bg"],
+            activeforeground=colors["button_fg"]
+        )
+        self.reload_media_btn.config(
             bg=colors["button_bg"],
             fg=colors["button_fg"],
             activebackground=colors["label_bg"],
@@ -849,7 +871,7 @@ class App:
     ):
         self.pending_actions += 1
         self.status_label.config(
-            text=f"{self.pending_actions} action(s) API en attente...",
+            text=f"{self.pending_actions} API action(s) pending...",
             fg="black"
         )
         future = self.api_executor.submit(operation, *args)
@@ -874,9 +896,9 @@ class App:
         try:
             future.result()
         except Exception as e:
-            error = f"Erreur {action} pour le post {post_id}: {e}"
+            error = f"Error {action} for post {post_id}: {e}"
             self.status_label.config(text=error, fg="red")
-            messagebox.showerror("Erreur API", error, parent=self.root)
+            messagebox.showerror("API Error", error, parent=self.root)
             return
 
         if counts_tag_edit:
@@ -896,12 +918,12 @@ class App:
 
         if self.pending_actions:
             self.status_label.config(
-                text=f"{self.pending_actions} action(s) API en attente...",
+                text=f"{self.pending_actions} API action(s) pending...",
                 fg="black"
             )
         else:
             self.status_label.config(
-                text=f"Action terminée pour le post {post_id}.",
+                text=f"Action completed for post {post_id}.",
                 fg="green"
             )
 
@@ -937,7 +959,7 @@ class App:
         except Exception as e:
             self.tag_edits_quota_refresh_pending = False
             self.tag_edits_label.config(
-                text=f"Quota d'éditions de tags indisponible : {e}",
+                text=f"Tag edit quota unavailable: {e}",
                 fg="red"
             )
             return
@@ -965,12 +987,12 @@ class App:
     def change_page(self, delta):
         new_page = self.page + delta
         if new_page < 1:
-            self.status_label.config(text="Vous êtes déjà à la première page.", fg="orange")
+            self.status_label.config(text="You are already on the first page.", fg="orange")
             return
         self.page = new_page
         self.page_label.config(text=f"Page: {self.page}")
         self.index = 0
-        self.status_label.config(text=f"Chargement de la page {self.page}...", fg="black")
+        self.status_label.config(text=f"Loading page {self.page}...", fg="black")
         self.load_posts()
 
     def go_to_page(self):
@@ -980,13 +1002,13 @@ class App:
             if p < 1:
                 raise ValueError()
         except ValueError:
-            self.status_label.config(text="Numéro de page invalide.", fg="red")
+            self.status_label.config(text="Invalid page number.", fg="red")
             return
 
         self.page = p
         self.page_label.config(text=f"Page: {self.page}")
         self.index = 0
-        self.status_label.config(text=f"Chargement de la page {self.page}...", fg="black")
+        self.status_label.config(text=f"Loading page {self.page}...", fg="black")
         self.load_posts()
         self.root.focus_set()
 
@@ -999,7 +1021,7 @@ class App:
         }
         # Page number for pagination
         params["page"] = self.page
-        # Construire la chaîne de tags en incluant les négations depuis la blacklist
+        # Build the tag search string including blacklist exclusions
         tags = self.cfg.search_tags or ""
         if getattr(self, 'blacklist', None):
             negs = " ".join(f"-{t}" for t in self.blacklist if t)
@@ -1012,8 +1034,8 @@ class App:
                 set_filter = f"-set:{self.skip_set_id}"
                 tags = (tags + " " + set_filter).strip() if tags else set_filter
             except Exception as e:
-                self.post_label.config(text=f"Erreur chargement: {e}")
-                self.status_label.config(text=f"Erreur chargement: {e}", fg="red")
+                self.post_label.config(text=f"Loading error: {e}")
+                self.status_label.config(text=f"Loading error: {e}", fg="red")
                 return
 
         if tags:
@@ -1031,9 +1053,9 @@ class App:
             self.posts = r.json().get("posts", [])
 
             if not self.posts:
-                self.post_label.config(text="Aucun résultat.")
+                self.post_label.config(text="No results.")
                 self.image_label.config(image="")
-                self.status_label.config(text="Aucun résultat pour cette page.", fg="orange")
+                self.status_label.config(text="No results for this page.", fg="orange")
                 return
 
             # Reset index for the new page
@@ -1041,8 +1063,8 @@ class App:
             self.show_post()
 
         except Exception as e:
-            self.post_label.config(text=f"Erreur chargement: {e}")
-            self.status_label.config(text=f"Erreur chargement: {e}", fg="red")
+            self.post_label.config(text=f"Loading error: {e}")
+            self.status_label.config(text=f"Loading error: {e}", fg="red")
 
     def get_skip_set_id(self):
         if self.skip_set_id is not None:
@@ -1063,21 +1085,21 @@ class App:
         ]
         if len(matches) != 1:
             raise RuntimeError(
-                f"Set introuvable ou ambigu pour le shortname "
+                f"Set not found or ambiguous for shortname "
                 f"'{self.cfg.set_shortname}'."
             )
 
         self.skip_set_id = matches[0].get("id")
         if self.skip_set_id is None:
             raise RuntimeError(
-                f"L'API n'a pas fourni l'identifiant du set "
+                f"The API did not provide the set ID for "
                 f"'{self.cfg.set_shortname}'."
             )
         return self.skip_set_id
 
     def add_post_to_skip_set(self, post_id):
         if post_id is None:
-            raise RuntimeError("L'identifiant du post est manquant.")
+            raise RuntimeError("The post ID is missing.")
 
         set_id = self.get_skip_set_id()
         response = self.request_session().post(
@@ -1091,9 +1113,8 @@ class App:
 
     def show_post(self):
         self.invalidate_image_request()
-        image_request_id = self.image_request_id
         if self.index >= len(self.posts):
-            self.post_label.config(text="Fin des résultats.")
+            self.post_label.config(text="End of results.")
             self.image_label.config(image="")
             self.status_label.config(text="")
             self.current_image = None
@@ -1104,7 +1125,7 @@ class App:
 
         post = self.posts[self.index]
         post_id = post.get("id")
-        self.post_label.config(text=f"Post ID : {post_id}")
+        self.post_label.config(text=f"Post ID: {post_id}")
 
         existing_tags = []
         for category_tags in post.get("tags", {}).values():
@@ -1113,13 +1134,24 @@ class App:
         self.preview_text.delete("1.0", tk.END)
         self.preview_text.insert(
             tk.END,
-            "TAGS ACTUELS:\n"
+            "CURRENT TAGS:\n"
             + " ".join(sorted(existing_tags))
             + "\n\n"
-            + "TAGS POSSIBLES À AJOUTER:\n"
+            + "TAGS AVAILABLE TO ADD:\n"
             + " ".join(self.cfg.add_tags)
         )
 
+        self.load_post_media(post)
+
+    def reload_media(self):
+        if self.index >= len(self.posts):
+            self.status_label.config(text="No post to reload.", fg="orange")
+            return
+
+        self.invalidate_image_request()
+        self.load_post_media(self.posts[self.index])
+
+    def load_post_media(self, post):
         post_file = post.get("file", {})
         image_url = post_file.get("url") or post.get("sample", {}).get("url")
         media_ext = post_file.get("ext") or os.path.splitext(
@@ -1129,11 +1161,12 @@ class App:
         self.image_label.config(image="", text="")
         self.current_image = None
         if not image_url:
-            self.status_label.config(text="Aucune image trouvée.", fg="red")
+            self.status_label.config(text="No image found.", fg="red")
             return
 
         if not self.pending_actions:
-            self.status_label.config(text="Chargement de l’image...", fg="black")
+            self.status_label.config(text="Loading image...", fg="black")
+        image_request_id = self.image_request_id
         self.image_future = self.image_executor.submit(
             self.download_media,
             image_url,
@@ -1207,7 +1240,8 @@ class App:
         response.raise_for_status()
         with Image.open(io.BytesIO(response.content)) as image:
             frames = []
-            for frame_index in range(image.n_frames):
+            frame_count = getattr(image, "n_frames", 1)
+            for frame_index in range(frame_count):
                 image.seek(frame_index)
                 frames.append((
                     image.copy(),
@@ -1240,7 +1274,7 @@ class App:
             media_type, media = future.result()
         except Exception as e:
             self.image_label.config(image="", text="")
-            self.status_label.config(text=f"Erreur média: {e}", fg="red")
+            self.status_label.config(text=f"Media error: {e}", fg="red")
             return
 
         if media_type == "video":
@@ -1251,7 +1285,7 @@ class App:
             )
             if not self.pending_actions:
                 self.status_label.config(
-                    text="Vidéo prête. Cliquer sur l’aperçu pour l’ouvrir.",
+                    text="Video ready. Click the preview to open it.",
                     fg="green"
                 )
             return
@@ -1270,7 +1304,7 @@ class App:
             )
         if not self.pending_actions:
             self.status_label.config(
-                text="Média chargé. Cliquer pour ouvrir en plein écran.",
+                text="Media loaded. Click to open in full screen.",
                 fg="green"
             )
 
@@ -1296,7 +1330,7 @@ class App:
         if self.video_path:
             if os.name != "nt":
                 self.status_label.config(
-                    text="L’ouverture des vidéos est disponible sous Windows.",
+                    text="Opening videos is available on Windows.",
                     fg="red"
                 )
                 return
@@ -1304,7 +1338,7 @@ class App:
                 os.startfile(self.video_path)
             except OSError as error:
                 self.status_label.config(
-                    text=f"Impossible d’ouvrir la vidéo: {error}",
+                    text=f"Unable to open the video: {error}",
                     fg="red"
                 )
             return
@@ -1333,11 +1367,11 @@ class App:
                 last_error = r
                 continue
             raise RuntimeError(
-                f"Erreur mise à jour ({r.status_code}): {r.text[:200]}"
+                f"Update error ({r.status_code}): {r.text[:200]}"
             )
 
         raise RuntimeError(
-            f"Erreur mise à jour (404): {last_error.text[:200] if last_error is not None else 'Not Found'}"
+            f"Update error (404): {last_error.text[:200] if last_error is not None else 'Not Found'}"
         )
 
     def submit(self):
@@ -1351,14 +1385,14 @@ class App:
 
         selected_tags = [tag for tag, var in self.vars.items() if var.get()]
         if not selected_tags:
-            self.status_label.config(text="Aucun tag sélectionné. Utilisez Skip pour passer.", fg="orange")
+            self.status_label.config(text="No tag selected. Use Skip to continue.", fg="orange")
             return
 
         merged_tags = sorted(set(existing_tags) | set(selected_tags))
         post_id = post.get("id")
         if post_id is None:
             self.status_label.config(
-                text="Erreur mise à jour: identifiant du post manquant.",
+                text="Update error: post ID missing.",
                 fg="red"
             )
             return
@@ -1382,7 +1416,7 @@ class App:
         if self.cfg.set_shortname:
             if post_id is None:
                 self.status_label.config(
-                    text="Erreur ajout au set: identifiant du post manquant.",
+                    text="Set add error: post ID missing.",
                     fg="red"
                 )
                 return
@@ -1395,16 +1429,16 @@ class App:
 
         self.index += 1
         if not self.pending_actions:
-            self.status_label.config(text="Post suivant...", fg="black")
+            self.status_label.config(text="Next post...", fg="black")
         self.show_post()
 
     def previous(self):
         if self.index > 0:
             self.index -= 1
-            self.status_label.config(text="Post précédent...", fg="black")
+            self.status_label.config(text="Previous post...", fg="black")
             self.show_post()
         else:
-            self.status_label.config(text="Vous êtes au premier post.", fg="orange")
+            self.status_label.config(text="You are at the first post.", fg="orange")
 
 
 if __name__ == "__main__":
@@ -1414,7 +1448,7 @@ if __name__ == "__main__":
     try:
         projects = load_tag_projects()
         if not projects:
-            raise RuntimeError(f"Aucun tag_projet trouvé dans {TAG_PROJECT_FILE}")
+            raise RuntimeError(f"No tag project found in {TAG_PROJECT_FILE}")
         selected_project = choose_tag_project(root, projects)
         if selected_project is not None:
             default_tags = load_default_search_tags()
@@ -1422,7 +1456,7 @@ if __name__ == "__main__":
             apply_tag_project(selected_project)
     except Exception as e:
         root.deiconify()
-        messagebox.showerror("Erreur", str(e), parent=root)
+        messagebox.showerror("Error", str(e), parent=root)
         root.destroy()
     else:
         if selected_project is None:

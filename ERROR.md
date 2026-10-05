@@ -8,7 +8,7 @@ It was created from the analysis of the code and the error messages explicitly g
 ### 1.1 Missing configuration file
 
 - Cause: the `config.txt` file cannot be found.
-- Message: `Fichier de configuration introuvable: config.txt`
+- Message: `Configuration file not found: config.txt`
 - Type: `RuntimeError`
 - Solution: create the `config.txt` file in the program folder with the correct format.
 
@@ -18,24 +18,24 @@ Expected example:
 [API]
 username=my_account
 api_key=my_key
-user_agent=e621-tag-editor/1.0
+user_agent=e621-tag-editor/1.0 by username
 
 [SEARCH]
 tags=rating:s safe
-limit=50
+limit=75
 
 [ADD_TAGS]
 tag1
 tag2
 
 [SET]
-set_shortname=my_set
+my_set
 ```
 
 ### 1.2 Missing credentials
 
 - Cause: `username` or `api_key` is missing from `config.txt`.
-- Message: `Veuillez renseigner username et api_key dans config.txt`
+- Message: `Please provide username and api_key in config.txt`
 - Type: displayed via `messagebox.showerror`
 - Solution: fill in the `[API]` fields in the configuration file.
 
@@ -50,15 +50,15 @@ set_shortname=my_set
 
 - Cause: `tag_project.txt` is missing or contains no valid project.
 - Possible messages:
-  - `Fichier de projets introuvable: tag_project.txt`
-  - `Aucun tag_projet trouvé dans tag_project.txt`
+  - `Projects file not found: tag_project.txt`
+  - `No tag project found in tag_project.txt`
 - Type: `RuntimeError`
 - Solution: create a `tag_project.txt` file containing at least one project.
 
 ### 1.5 Missing default tags file
 
 - Cause: `default_tag.txt` is missing.
-- Message: `Fichier de tags par défaut introuvable: default_tag.txt`
+- Message: `Default tags file not found: default_tag.txt`
 - Type: `RuntimeError`
 - Solution: create the file, even if it is empty or commented.
 
@@ -69,28 +69,28 @@ set_shortname=my_set
 ### 2.1 Tag edit quota not found on the e621 page
 
 - Cause: the quota page does not contain the expected text.
-- Message: `Impossible de trouver le quota d'éditions de tags dans la page e621.`
+- Message: `Could not find the tag edit quota on the e621 page.`
 - Type: `RuntimeError`
 - Solution: confirm that the page `https://e621.net/users/<username>/upload_limit.html` is accessible and that the site format has not changed.
 
 ### 2.2 `set_shortname` not found or ambiguous
 
 - Cause: the requested set shortname matches no set, or several results match.
-- Message: `Set introuvable ou ambigu pour le shortname '...'`
+- Message: `Set not found or ambiguous for shortname '...'`
 - Type: `RuntimeError`
 - Solution: verify the set shortname spelling and accuracy.
 
 ### 2.3 Incomplete API response for the set
 
 - Cause: the API did not return the expected set identifier.
-- Message: `L'API n'a pas fourni l'identifiant du set '...'`
+- Message: `The API did not provide the set ID for '...'`
 - Type: `RuntimeError`
 - Solution: check API access and set validity.
 
 ### 2.4 Invalid page number
 
 - Cause: the value entered in the “Go” field is not numeric or is less than 1.
-- Message: `Numéro de page invalide.`
+- Message: `Invalid page number.`
 - Type: local handling, no exception raised.
 - Solution: enter an integer greater than or equal to 1.
 
@@ -102,7 +102,7 @@ set_shortname=my_set
 
 - Cause: connection failure, timeout, DNS issue, proxy, or poor connectivity.
 - Type: `requests.exceptions.*`, `Timeout`, HTTP errors.
-- Symptoms: requests to `e621.net` fail and the program displays messages such as `Erreur chargement: ...` or `Erreur média: ...`.
+- Symptoms: requests to `e621.net` fail and the program displays messages such as `Loading error: ...` or `Media error: ...`.
 - Solution: verify internet access, connectivity, and the site availability.
 
 ### 3.2 Unhandled HTTP error
@@ -110,15 +110,15 @@ set_shortname=my_set
 - Cause: the server returns an HTTP error (401, 403, 404, 429, 500, etc.).
 - Type: `requests.HTTPError` via `response.raise_for_status()`
 - Typical messages:
-  - `Erreur chargement: ...`
-  - `Erreur API` in a dialog box
-  - `Erreur mise à jour (404): ...`
+  - `Loading error: ...`
+  - `API Error` in a dialog box
+  - `Update error (404): ...`
 - Solution: verify credentials, request validity, quota status, and service availability.
 
 ### 3.3 Tag edit quota unavailable
 
 - Cause: fetching the quota failed.
-- Message: `Quota d'éditions de tags indisponible : ...`
+- Message: `Tag edit quota unavailable: ...`
 - Type: exception caught in `finish_tag_edits_load()`.
 - Solution: verify access rights and quota page availability.
 
@@ -126,16 +126,16 @@ set_shortname=my_set
 
 - Cause: a post does not include an `id` field in the received data.
 - Messages:
-  - `L'identifiant du post est manquant.`
-  - `Erreur mise à jour: identifiant du post manquant.`
-  - `Erreur ajout au set: identifiant du post manquant.`
+  - `The post ID is missing.`
+  - `Update error: post ID missing.`
+  - `Set add error: post ID missing.`
 - Type: `RuntimeError`
 - Solution: verify the API response and the post data structure.
 
 ### 3.5 Tag update error
 
 - Cause: the post update request fails on the HTTP methods `POST`, `PATCH`, or `PUT`.
-- Message: `Erreur mise à jour (status): ...`
+- Message: `Update error (status): ...`
 - Type: `RuntimeError`
 - Solution: check API permissions, tag string validity, and service availability.
 
@@ -146,22 +146,22 @@ set_shortname=my_set
 ### 4.1 No results for the page
 
 - Cause: the search returned no posts.
-- Message: `Aucun résultat.`
-- Secondary message: `Aucun résultat pour cette page.`
+- Message: `No results.`
+- Secondary message: `No results for this page.`
 - Type: program logic, not an exception.
 - Solution: change the filters, blacklist, or search tags.
 
 ### 4.2 No image found for the post
 
 - Cause: the post contains neither `file.url` nor `sample.url`.
-- Message: `Aucune image trouvée.`
+- Message: `No image found.`
 - Type: program logic.
 - Solution: verify that the post contains a usable media file.
 
 ### 4.3 Post loading problem
 
 - Cause: HTTP error or JSON decoding error during `GET /posts.json`.
-- Message: `Erreur chargement: ...`
+- Message: `Loading error: ...`
 - Type: `Exception` caught.
 - Solution: verify the configuration, connectivity, and search parameters.
 
@@ -172,27 +172,28 @@ set_shortname=my_set
 ### 5.1 Media not downloadable
 
 - Cause: the media download fails or the response is not usable.
-- Message: `Erreur média: ...`
+- Message: `Media error: ...`
 - Type: `Exception` caught in `finish_media_load()`.
-- Solution: verify the media URL, server availability, file validity, and network connection.
+- Solution: click the **↻** button beside **Change Project**, or press **R**, to retry the download. If it still fails, verify the media URL, server availability, file validity, and network connection.
 
 ### 5.2 Corrupted or unsupported image
 
 - Cause: the downloaded content is not a valid image for Pillow.
 - Type: `UnidentifiedImageError`, `OSError`, or other PIL errors.
-- Solution: verify the file type and read permissions.
+- A still image format that does not expose a frame count is treated as a single-frame image.
+- Solution: verify the file type and read permissions. If this error persists, click the **↻** button beside **Change Project** or press **R** to retry.
 
 ### 5.3 Video cannot be opened on Linux/macOS
 
 - Cause: `os.startfile()` is only available on Windows.
-- Message: `L’ouverture des vidéos est disponible sous Windows.`
+- Message: `Opening videos is available on Windows.`
 - Type: control logic, not an exception.
 - Solution: open the video manually from the local storage folder.
 
 ### 5.4 Cannot open the video on Windows
 
 - Cause: the system cannot launch the video file.
-- Message: `Impossible d’ouvrir la vidéo: ...`
+- Message: `Unable to open the video: ...`
 - Type: `OSError`
 - Solution: verify that the file exists and that a default video player is installed.
 
@@ -210,21 +211,21 @@ set_shortname=my_set
 ### 6.1 No projects available
 
 - Cause: `tag_project.txt` contains no usable project.
-- Message: `Aucun tag_projet trouvé dans tag_project.txt`
+- Message: `No tag project found in tag_project.txt`
 - Type: `RuntimeError`
 - Solution: add a project with a `[NAME]` section followed by `[SEARCH]` and/or `[ADD_TAGS]`.
 
 ### 6.2 Project change blocked while API actions are running
 
 - Cause: the app tries to change projects while requests are still in progress.
-- Message: `Attendez la fin des actions API avant de changer de projet.`
+- Message: `Wait for the API actions to finish before changing projects.`
 - Type: program logic.
 - Solution: wait for the actions to finish before switching projects.
 
 ### 6.3 No tag selected
 
 - Cause: the user clicks “Submit” without checking any tags.
-- Message: `Aucun tag sélectionné. Utilisez Skip pour passer.`
+- Message: `No tag selected. Use Skip to continue.`
 - Type: program logic.
 - Solution: select at least one tag or use “Skip”.
 
@@ -243,15 +244,15 @@ set_shortname=my_set
 
 - Cause: several API operations are queued.
 - Messages:
-  - `1 action(s) API en attente...`
-  - `N action(s) API en attente...`
+  - `1 API action pending...`
+  - `N API actions pending...`
 - Type: program logic, not an exception.
 - Solution: wait for processing to finish before interacting too quickly.
 
 ### 7.2 Final API action failed
 
 - Cause: an update or set-add request fails during background processing.
-- Message: `Erreur {action} pour le post {post_id}: {e}`
+- Message: `Error {action} for post {post_id}: {e}`
 - Type: exception caught in `finish_api_action()`.
 - Solution: check logs, credentials, and the state of the e621 site.
 
