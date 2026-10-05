@@ -1,9 +1,13 @@
 import io
+import logging
+import os
 import queue
 import re
+import tempfile
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from html.parser import HTMLParser
+from urllib.parse import urlparse
 import requests
 import tkinter as tk
 from tkinter import messagebox
@@ -16,6 +20,8 @@ DEFAULT_TAG_FILE = "default_tag.txt"
 BASE_URL = "https://e621.net"
 BLACKLIST_FILE = "Blacklist.txt"
 TAG_EDIT_QUOTA_REFRESH_INTERVAL = 15
+VIDEO_EXTENSIONS = {".mp4", ".webm"}
+VIDEO_DIRECTORY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "video")
 
 
 def parse_remaining_tag_edits(page_html):
@@ -377,6 +383,10 @@ class App:
         self.pending_actions = 0
         self.image_request_id = 0
         self.image_future = None
+        self.animation_after_id = None
+        self.animation_frames = []
+        self.animation_index = 0
+        self.video_path = None
         self.tag_edits_remaining = None
         self.tag_edits_since_quota_refresh = 0
         self.tag_edits_quota_refresh_pending = False
@@ -471,7 +481,7 @@ class App:
 
         self.image_label = tk.Label(root)
         self.image_label.pack(padx=10, pady=10)
-        self.image_label.bind("<Button-1>", self.open_fullscreen)
+        self.image_label.bind("<Button-1>", self.open_current_media)
         self.widgets.append(self.image_label)
 
         self.current_image = None
@@ -947,6 +957,7 @@ class App:
 
     def close(self):
         self.closing = True
+        self.invalidate_image_request()
         self.api_executor.shutdown(wait=False, cancel_futures=True)
         self.image_executor.shutdown(wait=False, cancel_futures=True)
         self.root.destroy()
@@ -1109,8 +1120,13 @@ class App:
             + " ".join(self.cfg.add_tags)
         )
 
-        image_url = post.get("file", {}).get("url") or post.get("sample", {}).get("url")
-        self.image_label.config(image="")
+        post_file = post.get("file", {})
+        image_url = post_file.get("url") or post.get("sample", {}).get("url")
+        media_ext = post_file.get("ext") or os.path.splitext(
+            urlparse(image_url or "").path
+        )[1]
+        media_ext = f".{media_ext.lstrip('.').lower()}" if media_ext else ""
+        self.image_label.config(image="", text="")
         self.current_image = None
         if not image_url:
             self.status_label.config(text="Aucune image trouvée.", fg="red")
@@ -1119,12 +1135,13 @@ class App:
         if not self.pending_actions:
             self.status_label.config(text="Chargement de l’image...", fg="black")
         self.image_future = self.image_executor.submit(
-            self.download_image,
-            image_url
+            self.download_media,
+            image_url,
+            media_ext
         )
         self.image_future.add_done_callback(
-            lambda completed: self.schedule_ui_callback(
-                self.finish_image_load, completed, image_request_id
+            lambda completed: self.media_load_completed(
+                completed, image_request_id
             )
         )
 
@@ -1133,8 +1150,55 @@ class App:
         if self.image_future is not None:
             self.image_future.cancel()
             self.image_future = None
+        if self.animation_after_id is not None:
+            self.root.after_cancel(self.animation_after_id)
+            self.animation_after_id = None
+        self.animation_frames = []
+        self.animation_index = 0
+        video_path = self.video_path
+        self.video_path = None
+        if video_path:
+            self.remove_video_file(video_path)
 
-    def download_image(self, image_url):
+    @staticmethod
+    def remove_video_file(video_path):
+        try:
+            os.remove(video_path)
+        except FileNotFoundError:
+            pass
+        except OSError as error:
+            logging.warning("Could not remove video file %s: %s", video_path, error)
+
+    def download_media(self, image_url, media_ext):
+        if media_ext in VIDEO_EXTENSIONS:
+            os.makedirs(VIDEO_DIRECTORY, exist_ok=True)
+            temp_file = tempfile.NamedTemporaryFile(
+                prefix="e621-tag-editor-",
+                suffix=media_ext,
+                dir=VIDEO_DIRECTORY,
+                delete=False
+            )
+            video_path = temp_file.name
+            try:
+                with temp_file:
+                    with self.request_session().get(
+                        image_url,
+                        headers=self.request_headers(),
+                        timeout=60,
+                        stream=True
+                    ) as response:
+                        response.raise_for_status()
+                        for chunk in response.iter_content(chunk_size=1024 * 1024):
+                            if chunk:
+                                temp_file.write(chunk)
+                return "video", video_path
+            except Exception:
+                try:
+                    os.remove(video_path)
+                except FileNotFoundError:
+                    pass
+                raise
+
         response = self.request_session().get(
             image_url,
             headers=self.request_headers(),
@@ -1142,28 +1206,109 @@ class App:
         )
         response.raise_for_status()
         with Image.open(io.BytesIO(response.content)) as image:
-            return image.copy()
+            frames = []
+            for frame_index in range(image.n_frames):
+                image.seek(frame_index)
+                frames.append((
+                    image.copy(),
+                    max(20, int(image.info.get("duration", 100)))
+                ))
+            return "image", frames
 
-    def finish_image_load(self, future, image_request_id):
+    def media_load_completed(self, future, image_request_id):
+        if self.closing:
+            self.discard_downloaded_video(future)
+            return
+        self.schedule_ui_callback(
+            self.finish_media_load, future, image_request_id
+        )
+
+    def discard_downloaded_video(self, future):
+        try:
+            media_type, media = future.result()
+        except Exception:
+            return
+        if media_type == "video":
+            self.remove_video_file(media)
+
+    def finish_media_load(self, future, image_request_id):
         if image_request_id != self.image_request_id:
+            self.discard_downloaded_video(future)
             return
         self.image_future = None
         try:
-            image = future.result()
-            self.current_image = image.copy()
-            image.thumbnail((900, 500), Image.LANCZOS)
-            self.tk_image = ImageTk.PhotoImage(image)
-            self.image_label.config(image=self.tk_image)
+            media_type, media = future.result()
         except Exception as e:
-            self.image_label.config(image="")
-            self.status_label.config(text=f"Erreur image: {e}", fg="red")
+            self.image_label.config(image="", text="")
+            self.status_label.config(text=f"Erreur média: {e}", fg="red")
             return
 
+        if media_type == "video":
+            self.video_path = media
+            self.image_label.config(
+                text="Video ready\nClick here to open it",
+                cursor="hand2"
+            )
+            if not self.pending_actions:
+                self.status_label.config(
+                    text="Vidéo prête. Cliquer sur l’aperçu pour l’ouvrir.",
+                    fg="green"
+                )
+            return
+
+        self.animation_frames = []
+        for frame, duration in media:
+            display_frame = frame.copy()
+            thumbnail = frame.copy()
+            thumbnail.thumbnail((900, 500), Image.LANCZOS)
+            self.animation_frames.append((display_frame, thumbnail, duration))
+        self.display_animation_frame(0)
+        if len(self.animation_frames) > 1:
+            self.animation_after_id = self.root.after(
+                self.animation_frames[0][2],
+                self.animate_gif
+            )
         if not self.pending_actions:
             self.status_label.config(
-                text="Image chargée. Cliquer pour ouvrir en plein écran.",
+                text="Média chargé. Cliquer pour ouvrir en plein écran.",
                 fg="green"
             )
+
+    def display_animation_frame(self, frame_index):
+        full_frame, thumbnail, _ = self.animation_frames[frame_index]
+        self.animation_index = frame_index
+        self.current_image = full_frame.copy()
+        self.tk_image = ImageTk.PhotoImage(thumbnail)
+        self.image_label.config(image=self.tk_image, text="", cursor="hand2")
+
+    def animate_gif(self):
+        if len(self.animation_frames) < 2:
+            self.animation_after_id = None
+            return
+        next_index = (self.animation_index + 1) % len(self.animation_frames)
+        self.display_animation_frame(next_index)
+        self.animation_after_id = self.root.after(
+            self.animation_frames[next_index][2],
+            self.animate_gif
+        )
+
+    def open_current_media(self, event=None):
+        if self.video_path:
+            if os.name != "nt":
+                self.status_label.config(
+                    text="L’ouverture des vidéos est disponible sous Windows.",
+                    fg="red"
+                )
+                return
+            try:
+                os.startfile(self.video_path)
+            except OSError as error:
+                self.status_label.config(
+                    text=f"Impossible d’ouvrir la vidéo: {error}",
+                    fg="red"
+                )
+            return
+        self.open_fullscreen()
 
     def update_post_tags(self, post_id, tags):
         data = {

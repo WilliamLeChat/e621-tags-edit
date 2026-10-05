@@ -13,7 +13,8 @@ A small desktop app for reviewing e621 posts and submitting tags.
    ```
 
    This installs `requests` for e621 API requests and `Pillow` for displaying
-   images.
+   images and animated GIFs. Videos use your Windows default player and need no
+   extra Python library.
 4. Edit `config.txt` and add your e621 username and API key. Keep this file
    private; never share or publish your API key.
 5. Add at least one project to `tag_project.txt`. The app asks you to choose
@@ -37,6 +38,16 @@ A small desktop app for reviewing e621 posts and submitting tags.
    in `config.txt`, the skipped post is added to that set.
 5. Use the page controls to browse other result pages, or **Change Project** to
    choose another project.
+6. GIFs play in the app. For an MP4 or WebM post, click the preview to open the
+   downloaded video with the default Windows app for that file type. The video
+   is saved in the `video` folder beside `main.py`; the app creates this folder
+   when needed. Install or choose a media player that supports the format if
+   Windows asks which app to use. When you submit or skip and move to another
+   post, the app automatically tries to delete the downloaded video. It also
+   cleans it up when you browse away from the post or close the app. If another
+   program is still using the video and Windows prevents deletion, the file may
+   remain in the `video` folder and can be removed manually after closing the
+   player. GIFs are animated in the app and are not saved in this folder.
 
 ### Keyboard shortcuts
 
