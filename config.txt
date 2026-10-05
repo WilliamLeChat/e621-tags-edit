@@ -1,12 +1,14 @@
 [API]
-username= YOUR-E621-USERNAME
-api_key= YOUR-E621-API-KEY
-user_agent=e621 Tag Editor by YOUR-E621-USERNAM
+username=WilliamLeChat
+api_key=wBE3et8p4emJKBwitshXA9Yq
+user_agent=e621 Tag Editor by WilliamLeChat
 
 [SEARCH]
-tags=
+tags=dialogue -*_text -wingdings -pictographics -empty_speech_bubble -flash -webm status:active -animated
 limit=75
 [ADD_TAGS]
-
+spanish_text
+english_text
+french_text
 [SET]
-YOUR SET SHORT NAME
+post_skiped
