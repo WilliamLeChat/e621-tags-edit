@@ -15,8 +15,8 @@ A small desktop app for reviewing e621 posts and submitting tags.
    This installs `requests` for e621 API requests and `Pillow` for displaying
    images and animated GIFs. Videos use your Windows default player and need no
    extra Python library.
-4. Edit `config.txt` and add your e621 username and API key. Keep this file
-   private; never share or publish your API key.
+4. Edit `config.txt` and add your e621 username and API key. **KEEP THIS FILE**
+   **PRIVATE; NEVER SHARE OR PUBLISH YOUR API KEY !!!**
 5. Add at least one project to `tag_project.txt`. The app asks you to choose
    one when it starts.
 6. Run the app:
