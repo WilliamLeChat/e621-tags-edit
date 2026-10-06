@@ -1,0 +1,12 @@
+[API]
+username=
+api_key=
+user_agent=e621-tag-editor/1.0 by 
+
+[SEARCH]
+
+limit=75
+[ADD_TAGS]
+
+[SET]
+
