@@ -18,7 +18,9 @@ A small desktop app for reviewing e621 posts and submitting tags.
 4. Edit `config/config.txt` and add your e621 username and API key. **KEEP THIS
    FILE PRIVATE; NEVER SHARE OR PUBLISH YOUR API KEY !!!**
 5. Add at least one project to `config/tag_project.txt`. The app asks you to
-   choose one when it starts.
+   choose a primary project at startup, then optionally choose a second project
+   to combine with it. You can also combine projects when changing projects
+   from the main window.
 6. Run the app:
 
    ```bash
@@ -29,8 +31,11 @@ A small desktop app for reviewing e621 posts and submitting tags.
 
 ## Using the app
 
-1. Choose a project when the app starts. Its search and tag checkboxes are
-   loaded automatically.
+1. Choose a primary project when the app starts. Optionally choose a second
+   project to combine its search tags and add-tags with the primary project,
+   or click **Use primary only**. The result limit comes from the primary
+   project (or the second project if the primary has no limit). Default search
+   tags are added to the combined search as usual.
 2. Review the post and click the checkboxes for the tags that apply.
 3. Click **Submit** to add the selected tags to the post and continue. At least
    one tag must be selected.
@@ -38,7 +43,10 @@ A small desktop app for reviewing e621 posts and submitting tags.
    in `config/config.txt`, the skipped post is added to that set.
 5. Use the page controls to browse other result pages, or **Change Project** to
    choose another project. Click the **↻** button beside **Change Project** to
-   reload the current post's image or media if it failed to load.
+   reload the current post's image or media if it failed to load. Use the star
+   button beside it to add the current post to your e621 favorites or remove it.
+   An outlined star means the post is not favorited; a filled star means it is.
+   The status line confirms when a post has been added or removed.
 6. GIFs play in the app. For an MP4 or WebM post, click the preview to open the
    downloaded video with the default Windows app for that file type. The video
    is saved in the `video` folder beside `main.py`; the app creates this folder
@@ -59,6 +67,8 @@ A small desktop app for reviewing e621 posts and submitting tags.
 - **Right Arrow**: skip the current post.
 - **Left Arrow**: go back to the previous post on the current page.
 - **R**: reload the current post's image or media.
+- **F**: add the current post to your e621 favorites, or remove it if it is
+  already favorited.
 
 Shortcuts work when focus is not in a text or page-number field. Number keys
 toggle tag checkboxes; shortcuts do not choose a project.
@@ -72,8 +82,8 @@ Configuration files are stored in the `config` folder. Keep your API key in
 
 Fill in your own e621 account details. Keep the section names and `key=value`
 format. You do not need to fill in `[SEARCH]` or `[ADD_TAGS]` yourself: when
-you choose a project at startup, the app copies those settings from
-`config/tag_project.txt` into `config/config.txt`.
+you choose a project or project combination, the app copies those settings
+from `config/tag_project.txt` into `config/config.txt`.
 
 ```ini
 [API]
@@ -92,6 +102,10 @@ searches.
 
 The selected project's `[SEARCH]` and `[ADD_TAGS]` settings are copied from
 `config/tag_project.txt` into `config/config.txt` automatically at startup.
+When combining two projects, their search terms and add-tags are merged;
+duplicate add-tags are included only once. The primary project's `limit=`
+setting is used, falling back to the second project's limit if the primary
+does not specify one.
 
 ### `config/tag_project.txt` — selectable projects
 

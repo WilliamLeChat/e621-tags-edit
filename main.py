@@ -5,6 +5,7 @@ import queue
 import re
 import tempfile
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from html.parser import HTMLParser
 from urllib.parse import urlparse
@@ -215,6 +216,47 @@ def add_default_search_tags(project, default_tags):
     return updated_project
 
 
+def combine_tag_projects(primary_project, secondary_project=None):
+    combined_project = {
+        **primary_project,
+        "search": list(primary_project["search"]),
+        "add_tags": list(primary_project["add_tags"])
+    }
+    if secondary_project is None:
+        return combined_project
+
+    search_terms = []
+    other_search_options = []
+    limit_option = None
+    for project in (primary_project, secondary_project):
+        for line in project["search"]:
+            if line.startswith("tags="):
+                for term in line.split("=", 1)[1].split():
+                    if term not in search_terms:
+                        search_terms.append(term)
+            elif line.startswith("limit="):
+                if limit_option is None:
+                    limit_option = line
+            elif line not in other_search_options:
+                other_search_options.append(line)
+
+    combined_search = []
+    if search_terms:
+        combined_search.append(f"tags={' '.join(search_terms)}")
+    if limit_option is not None:
+        combined_search.append(limit_option)
+    combined_search.extend(other_search_options)
+
+    combined_project["name"] = (
+        f"{primary_project['name']} + {secondary_project['name']}"
+    )
+    combined_project["search"] = combined_search
+    combined_project["add_tags"] = list(dict.fromkeys(
+        primary_project["add_tags"] + secondary_project["add_tags"]
+    ))
+    return combined_project
+
+
 def replace_config_sections(config_text, project):
     replacements = {
         "[SEARCH]": project["search"],
@@ -302,6 +344,77 @@ def choose_tag_project(root, projects):
     return selection["project"]
 
 
+def choose_second_tag_project(root, projects, primary_project):
+    available_projects = [
+        project for project in projects if project is not primary_project
+    ]
+    if not available_projects:
+        return None
+
+    selection = {"project": None}
+    dialog = tk.Toplevel(root)
+    dialog.title("Combine with a second project (optional)")
+    dialog.resizable(False, False)
+    tk.Label(
+        dialog,
+        text=(
+            f"Choose a second project to combine with "
+            f"\"{primary_project['name']}\"."
+        )
+    ).pack(padx=12, pady=(12, 6))
+
+    project_list = tk.Listbox(
+        dialog,
+        width=45,
+        height=min(len(available_projects), 12)
+    )
+    for project in available_projects:
+        project_list.insert(tk.END, project["name"])
+    project_list.pack(padx=12, pady=6)
+    project_list.selection_set(0)
+    project_list.activate(0)
+
+    def confirm_selection(event=None):
+        selected = project_list.curselection()
+        if selected:
+            selection["project"] = available_projects[selected[0]]
+            dialog.destroy()
+
+    button_frame = tk.Frame(dialog)
+    button_frame.pack(pady=(4, 12))
+    tk.Button(
+        button_frame,
+        text="Combine",
+        command=confirm_selection
+    ).pack(side="left", padx=5)
+    tk.Button(
+        button_frame,
+        text="Use primary only",
+        command=dialog.destroy
+    ).pack(side="left", padx=5)
+    project_list.bind("<Double-Button-1>", confirm_selection)
+    dialog.bind("<Return>", confirm_selection)
+    dialog.bind("<Escape>", lambda event: dialog.destroy())
+    dialog.grab_set()
+    project_list.focus_set()
+    root.wait_window(dialog)
+
+    return selection["project"]
+
+
+def choose_tag_projects(root, projects):
+    primary_project = choose_tag_project(root, projects)
+    if primary_project is None:
+        return None
+
+    secondary_project = choose_second_tag_project(
+        root,
+        projects,
+        primary_project
+    )
+    return combine_tag_projects(primary_project, secondary_project)
+
+
 def load_blacklist():
     bl = []
     try:
@@ -357,6 +470,7 @@ class App:
 
         self.root = root
         self.theme = Theme()
+        self.started_at = time.monotonic()
 
         try:
             self.cfg = load_config()
@@ -392,6 +506,9 @@ class App:
         self.tag_edits_remaining = None
         self.tag_edits_since_quota_refresh = 0
         self.tag_edits_quota_refresh_pending = False
+        self.favorite_states = {}
+        self.favorite_actions_pending = set()
+        self.favorite_status_message = None
         self.closing = False
         self.ui_callbacks = queue.SimpleQueue()
         self.request_sessions = threading.local()
@@ -464,6 +581,9 @@ class App:
         )
         self.change_project_btn.pack(side="left", padx=(5, 0))
 
+        self.uptime_label = tk.Label(self.top_frame, text="Uptime: 00:00:00")
+        self.uptime_label.pack(side="right")
+
         self.reload_media_btn = tk.Button(
             self.page_frame,
             text="↻",
@@ -471,6 +591,16 @@ class App:
             command=self.reload_media
         )
         self.reload_media_btn.pack(side="left", padx=(5, 0))
+
+        self.favorite_btn = tk.Button(
+            self.page_frame,
+            text="☆",
+            width=3,
+            fg="#f0c419",
+            activeforeground="#f0c419",
+            command=self.toggle_favorite
+        )
+        self.favorite_btn.pack(side="left", padx=(5, 0))
 
         self.widgets.extend([
             self.page_frame,
@@ -480,7 +610,8 @@ class App:
             self.go_page_btn,
             self.next_page_btn,
             self.change_project_btn,
-            self.reload_media_btn
+            self.reload_media_btn,
+            self.favorite_btn
         ])
 
         self.tag_edits_label = tk.Label(
@@ -546,6 +677,7 @@ class App:
         self.widgets.append(self.preview_text)
 
         self.apply_theme()
+        self.update_uptime()
         root.protocol("WM_DELETE_WINDOW", self.close)
         root.after(25, self.process_ui_callbacks)
         self.load_tag_edits_remaining()
@@ -554,6 +686,15 @@ class App:
     def toggle_theme(self):
         colors = self.theme.toggle()
         self.apply_theme()
+
+    def update_uptime(self):
+        elapsed_seconds = int(time.monotonic() - self.started_at)
+        hours, remainder = divmod(elapsed_seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        self.uptime_label.config(
+            text=f"Uptime: {hours:02}:{minutes:02}:{seconds:02}"
+        )
+        self.root.after(1000, self.update_uptime)
 
     def create_tag_checkboxes(self):
         for child in self.checkbox_frame.winfo_children():
@@ -593,7 +734,7 @@ class App:
                     f"No tag project found in {TAG_PROJECT_FILE}"
                 )
 
-            selected_project = choose_tag_project(self.root, projects)
+            selected_project = choose_tag_projects(self.root, projects)
             if selected_project is None:
                 return
 
@@ -632,6 +773,9 @@ class App:
         key = event.char
         if key.lower() == "r":
             self.reload_media()
+            return "break"
+        if key.lower() == "f":
+            self.toggle_favorite()
             return "break"
 
         if len(key) != 1 or key not in "0123456789":
@@ -751,6 +895,10 @@ class App:
             bg=colors["label_bg"],
             fg=colors["label_fg"]
         )
+        self.uptime_label.config(
+            bg=colors["label_bg"],
+            fg=colors["label_fg"]
+        )
         self.top_frame.config(bg=colors["bg"])
         self.page_frame.config(bg=colors["bg"])
         self.checkbox_frame.config(bg=colors["bg"])
@@ -794,6 +942,11 @@ class App:
             fg=colors["button_fg"],
             activebackground=colors["label_bg"],
             activeforeground=colors["button_fg"]
+        )
+        self.favorite_btn.config(
+            bg=colors["button_bg"],
+            activebackground=colors["label_bg"],
+            disabledforeground="#f0c419"
         )
         # Page navigation buttons
         if hasattr(self, 'prev_page_btn'):
@@ -869,7 +1022,8 @@ class App:
         post_id,
         operation,
         *args,
-        counts_tag_edit=False
+        counts_tag_edit=False,
+        on_complete=None
     ):
         self.pending_actions += 1
         self.status_label.config(
@@ -883,7 +1037,8 @@ class App:
                 completed,
                 action,
                 post_id,
-                counts_tag_edit
+                counts_tag_edit,
+                on_complete
             )
         )
 
@@ -892,16 +1047,31 @@ class App:
         future,
         action,
         post_id,
-        counts_tag_edit=False
+        counts_tag_edit=False,
+        on_complete=None
     ):
         self.pending_actions -= 1
         try:
             future.result()
         except Exception as e:
+            if on_complete is not None:
+                on_complete(False)
             error = f"Error {action} for post {post_id}: {e}"
             self.status_label.config(text=error, fg="red")
             messagebox.showerror("API Error", error, parent=self.root)
             return
+
+        if on_complete is not None:
+            on_complete(True)
+
+        if action == "add to favorites":
+            self.favorite_status_message = (
+                f"Post {post_id} added to favorites."
+            )
+        elif action == "remove from favorites":
+            self.favorite_status_message = (
+                f"Post {post_id} removed from favorites."
+            )
 
         if counts_tag_edit:
             self.tag_edits_since_quota_refresh += 1
@@ -925,9 +1095,13 @@ class App:
             )
         else:
             self.status_label.config(
-                text=f"Action completed for post {post_id}.",
+                text=(
+                    self.favorite_status_message
+                    or f"Action completed for post {post_id}."
+                ),
                 fg="green"
             )
+            self.favorite_status_message = None
 
     def load_tag_edits_remaining(self):
         if self.tag_edits_quota_refresh_pending:
@@ -1058,6 +1232,7 @@ class App:
                 self.post_label.config(text="No results.")
                 self.image_label.config(image="")
                 self.status_label.config(text="No results for this page.", fg="orange")
+                self.update_favorite_button()
                 return
 
             # Reset index for the new page
@@ -1113,6 +1288,95 @@ class App:
         )
         response.raise_for_status()
 
+    def set_post_favorite(self, post_id, is_favorited):
+        if post_id is None:
+            raise RuntimeError("The post ID is missing.")
+
+        session = self.request_session()
+        if is_favorited:
+            response = session.post(
+                f"{BASE_URL}/favorites.json",
+                headers=self.request_headers(),
+                auth=(self.cfg.username, self.cfg.api_key),
+                data={"post_id": post_id},
+                timeout=20
+            )
+        else:
+            response = session.delete(
+                f"{BASE_URL}/favorites/{post_id}.json",
+                headers=self.request_headers(),
+                auth=(self.cfg.username, self.cfg.api_key),
+                timeout=20
+            )
+        response.raise_for_status()
+
+    def update_favorite_button(self, post=None):
+        if post is None:
+            self.favorite_btn.config(text="☆", state=tk.DISABLED)
+            return
+
+        post_id = post.get("id")
+        is_favorited = self.favorite_states.get(
+            post_id,
+            bool(post.get("is_favorited", False))
+        )
+        state = (
+            tk.DISABLED
+            if post_id is None or post_id in self.favorite_actions_pending
+            else tk.NORMAL
+        )
+        self.favorite_btn.config(
+            text="★" if is_favorited else "☆",
+            state=state
+        )
+
+    def toggle_favorite(self):
+        if self.index >= len(self.posts):
+            self.status_label.config(text="No post to favorite.", fg="orange")
+            self.update_favorite_button()
+            return
+
+        post = self.posts[self.index]
+        post_id = post.get("id")
+        if post_id is None:
+            self.status_label.config(
+                text="Favorite error: post ID missing.",
+                fg="red"
+            )
+            self.update_favorite_button(post)
+            return
+        if post_id in self.favorite_actions_pending:
+            return
+
+        is_favorited = self.favorite_states.get(
+            post_id,
+            bool(post.get("is_favorited", False))
+        )
+        desired_state = not is_favorited
+        self.favorite_actions_pending.add(post_id)
+        self.update_favorite_button(post)
+
+        def finish_favorite_action(success):
+            if success:
+                self.favorite_states[post_id] = desired_state
+                post["is_favorited"] = desired_state
+            self.favorite_actions_pending.discard(post_id)
+            if (
+                self.index < len(self.posts)
+                and self.posts[self.index].get("id") == post_id
+            ):
+                self.update_favorite_button(self.posts[self.index])
+
+        action = "add to favorites" if desired_state else "remove from favorites"
+        self.queue_api_action(
+            action,
+            post_id,
+            self.set_post_favorite,
+            post_id,
+            desired_state,
+            on_complete=finish_favorite_action
+        )
+
     def show_post(self):
         self.invalidate_image_request()
         if self.index >= len(self.posts):
@@ -1120,6 +1384,7 @@ class App:
             self.image_label.config(image="")
             self.status_label.config(text="")
             self.current_image = None
+            self.update_favorite_button()
             return
 
         for var in self.vars.values():
@@ -1127,6 +1392,9 @@ class App:
 
         post = self.posts[self.index]
         post_id = post.get("id")
+        if post_id in self.favorite_states:
+            post["is_favorited"] = self.favorite_states[post_id]
+        self.update_favorite_button(post)
         self.post_label.config(text=f"Post ID: {post_id}")
 
         existing_tags = []
@@ -1451,7 +1719,7 @@ if __name__ == "__main__":
         projects = load_tag_projects()
         if not projects:
             raise RuntimeError(f"No tag project found in {TAG_PROJECT_FILE}")
-        selected_project = choose_tag_project(root, projects)
+        selected_project = choose_tag_projects(root, projects)
         if selected_project is not None:
             default_tags = load_default_search_tags()
             selected_project = add_default_search_tags(selected_project, default_tags)

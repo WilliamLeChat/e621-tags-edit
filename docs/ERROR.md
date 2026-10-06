@@ -62,6 +62,17 @@ my_set
 - Type: `RuntimeError`
 - Solution: create the file, even if it is empty or commented.
 
+### 1.6 Combining tag projects
+
+- Behavior: after choosing a primary project, the app optionally offers a
+  second project to combine with it. Choose **Use primary only** (or close the
+  optional dialog) to continue with just the primary project.
+- Combined settings: search terms and add-tags from both projects are merged,
+  with duplicate add-tags included once. The primary project's `limit=` value
+  is used; if it has none, the second project's value is used.
+- Note: project combination does not introduce a separate error condition.
+  Existing project file and configuration errors still apply.
+
 ---
 
 ## 2. Data parsing errors
@@ -138,6 +149,15 @@ my_set
 - Message: `Update error (status): ...`
 - Type: `RuntimeError`
 - Solution: check API permissions, tag string validity, and service availability.
+
+### 3.6 Favorite action error
+
+- Cause: the request to add or remove a post from e621 favorites fails.
+- Message: `Error add to favorites for post <post_id>: ...` or
+  `Error remove from favorites for post <post_id>: ...`
+- Type: exception caught by `finish_api_action()`.
+- Solution: verify the API credentials and network connection, then retry. The
+  star only changes after e621 confirms the favorite action.
 
 ---
 
