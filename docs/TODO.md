@@ -74,4 +74,14 @@ are implemented; unchecked items are ideas to prioritize or complete.
   `README.md`.
 - [x] Document known errors and troubleshooting in `docs/ERROR.md`.
 
+### 8. Current e621 API compatibility
+
+- [x] Accept post responses using the current top-level list format and the
+  previous `{"posts": [...]}` format.
+- [x] Support both list-based and category-based tag data.
+- [x] Load original, sample, and preview media URLs from the current e621 file
+  structure.
+- [x] Preserve media extension detection and tag submission with older API
+  response formats.
+
 ## To Do

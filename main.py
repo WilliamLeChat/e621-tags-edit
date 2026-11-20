@@ -1226,7 +1226,13 @@ class App:
                 timeout=20
             )
             r.raise_for_status()
-            self.posts = r.json().get("posts", [])
+            response_data = r.json()
+            if isinstance(response_data, list):
+                self.posts = response_data
+            elif isinstance(response_data, dict):
+                self.posts = response_data.get("posts", [])
+            else:
+                raise RuntimeError("Unexpected posts response format.")
 
             if not self.posts:
                 self.post_label.config(text="No results.")
@@ -1398,8 +1404,13 @@ class App:
         self.post_label.config(text=f"Post ID: {post_id}")
 
         existing_tags = []
-        for category_tags in post.get("tags", {}).values():
-            existing_tags.extend(category_tags)
+        post_tags = post.get("tags", [])
+        if isinstance(post_tags, dict):
+            for category_tags in post_tags.values():
+                if isinstance(category_tags, list):
+                    existing_tags.extend(category_tags)
+        elif isinstance(post_tags, list):
+            existing_tags.extend(post_tags)
 
         self.preview_text.delete("1.0", tk.END)
         self.preview_text.insert(
@@ -1423,8 +1434,37 @@ class App:
 
     def load_post_media(self, post):
         post_file = post.get("file", {})
-        image_url = post_file.get("url") or post.get("sample", {}).get("url")
-        media_ext = post_file.get("ext") or os.path.splitext(
+        post_files = post.get("files", {})
+        original_file = (
+            post_file
+            if isinstance(post_file, dict)
+            else {}
+        )
+        if not original_file and isinstance(post_files, dict):
+            original_file = post_files.get("original", {})
+        sample_file = post.get("sample", {})
+        if not isinstance(sample_file, dict):
+            sample_file = {}
+        if isinstance(post_files, dict) and not sample_file:
+            sample_file = post_files.get("sample", {})
+
+        image_url = (
+            original_file.get("url")
+            or (sample_file.get("url") if isinstance(sample_file, dict) else None)
+        )
+        if not image_url and isinstance(post_files, dict):
+            preview_file = post_files.get("preview", {})
+            if isinstance(preview_file, dict):
+                image_url = preview_file.get("jpg") or preview_file.get("webp")
+
+        media_ext = original_file.get("ext")
+        if not media_ext:
+            post_files = post.get("files", {})
+            if isinstance(post_files, dict):
+                media_meta = post_files.get("meta", {})
+                if isinstance(media_meta, dict):
+                    media_ext = media_meta.get("ext")
+        media_ext = media_ext or os.path.splitext(
             urlparse(image_url or "").path
         )[1]
         media_ext = f".{media_ext.lstrip('.').lower()}" if media_ext else ""
@@ -1650,8 +1690,13 @@ class App:
 
         post = self.posts[self.index]
         existing_tags = []
-        for category_tags in post.get("tags", {}).values():
-            existing_tags.extend(category_tags)
+        post_tags = post.get("tags", [])
+        if isinstance(post_tags, dict):
+            for category_tags in post_tags.values():
+                if isinstance(category_tags, list):
+                    existing_tags.extend(category_tags)
+        elif isinstance(post_tags, list):
+            existing_tags.extend(post_tags)
 
         selected_tags = [tag for tag, var in self.vars.items() if var.get()]
         if not selected_tags:
